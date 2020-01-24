@@ -523,6 +523,9 @@ sge_follow_order(sge_gdi_ctx_class_t *ctx,
       lSetString(jatp, JAT_master_queue, lGetString(master_qep, QU_full_name));
       lSetList(jatp, JAT_granted_destin_identifier_list, gdil);
 
+      /*job is now sent and goes into transfering state, from here, to store the info of GPUs*/
+      sge_commit_job(ctx, jep, jatp, NULL, COMMIT_ST_SENT, COMMIT_DEFAULT, monitor);
+
       if (sge_give_job(ctx, jep, jatp, master_qep, pe, master_host, monitor)) {
 
          /* setting of queues in state unheard is done by sge_give_job() */
@@ -539,7 +542,7 @@ sge_follow_order(sge_gdi_ctx_class_t *ctx,
 
       /* job is now sent and goes into transfering state */
       /* mode == COMMIT_ST_SENT -> really accept when execd acks */
-      sge_commit_job(ctx, jep, jatp, NULL, COMMIT_ST_SENT, COMMIT_DEFAULT, monitor);
+      //sge_commit_job(ctx, jep, jatp, NULL, COMMIT_ST_SENT, COMMIT_DEFAULT, monitor);
 
       /* now send events and spool the job */
       {

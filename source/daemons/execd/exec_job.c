@@ -922,6 +922,27 @@ int sge_exec_job(sge_gdi_ctx_class_t *ctx, lListElem *jep, lListElem *jatep,
 #endif
       }
 
+      /*set GPU env*/
+
+      const char* cuda_dev=NULL;
+      for_each (gdil_ep, gdil)
+      {
+         if (!sge_hostcmp(lGetHost(master_q, QU_qhostname), lGetHost(gdil_ep, JG_qhostname)))
+         {
+
+#if 0
+sge_log(LOG_WARNING,"get GPUs",__FILE__,SGE_FUNC,__LINE__);
+sge_log(LOG_WARNING,lGetHost(gdil_ep, JG_qhostname),__FILE__,SGE_FUNC,__LINE__);
+#endif
+
+           cuda_dev=lGetString(gdil_ep, JG_cuda_visible_divices);
+           break;/*Got it, end the loop*/
+         }
+      }
+      if(cuda_dev==NULL) cuda_dev="";
+
+      var_list_set_string(&environmentList, "CUDA_VISIBLE_DEVICES",cuda_dev);
+
       /* set final of variables whose value shall be replaced */ 
       var_list_copy_prefix_vars(&environmentList, environmentList,
                                 VAR_PREFIX, "SGE_");
