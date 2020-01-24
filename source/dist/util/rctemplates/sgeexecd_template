@@ -434,6 +434,7 @@ if [ "$startup" = true ]; then
       fi
       echo "   Starting Grid Engine execution daemon"
       exec 1>/dev/null 2>&1
+      $SGE_ROOT/util/resources/scripts/setup-cgroups-etc start
       $bin_dir/sge_execd
       [ $? -eq 0 -a -d /var/lock/subsys ] && touch /var/lock/subsys/sgeexecd
 

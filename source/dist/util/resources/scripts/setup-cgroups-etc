@@ -36,13 +36,13 @@ if [ "$1" != stop ]; then
         # We may already be set up, but just plough on and maybe re-do
         # things or ignore failure when they've been done.'
         mkdir -p $cpuset_mnt
-        mount -t cpuset none $cpuset_mnt >/dev/null 2>&1
+        mount -t cgroup -ocpuset cpuset $cpuset_mnt >/dev/null 2>&1
         mount | grep -q cpuset || rmdir $cpuset_mnt
         if [ ! -d $sge_cpuset ]; then
             mkdir $sge_cpuset 2>/dev/null
             # These aren't inherited, and mems needs to be set to add
             # a task anywhere below.
-            /bin/cp $cpuset_mnt/mems $cpuset_mnt/cpus $sge_cpuset
+            /bin/cp $cpuset_mnt/cpuset.mems $cpuset_mnt/cpuset.cpus $sge_cpuset
             # Avoid a release agent for now
 #             if ! /usr/bin/test -x /sbin/cpuset_release_agent; then
 #                 cat <<EOF >/sbin/cpuset_release_agent
