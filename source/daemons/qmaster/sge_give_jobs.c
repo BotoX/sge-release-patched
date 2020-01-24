@@ -1054,6 +1054,20 @@ void sge_commit_job(sge_gdi_ctx_class_t *ctx,
             host = host_list_locate(master_exechost_list, queue_hostname);
             if (debit_host_consumable(jep, host, master_centry_list, tmp_slot, master_task, NULL) > 0) {
                /* this info is not spooled */
+
+               {
+                 const char *myname="ngpus";
+                 /*Process GPU infor*/
+                 lListElem *theGpus = lGetSubStr(host, RUE_name, myname, EH_resource_utilization); /*hard coded*/
+                 if(theGpus == NULL){
+                   DPRINTF(("Error, cannot get NGPUS list\n"));
+                 }
+                 /*u_long32*/
+                 const char* gpuid=NULL;
+                 gpuid=qinstance_get_gpu_used(jobid,theGpus);
+                 lSetString(ep,JG_cuda_visible_divices, gpuid);
+               }
+
                sge_add_event(0, sgeE_EXECHOST_MOD, 0, 0, 
                              queue_hostname, NULL, NULL, host);
                reporting_create_host_consumable_record(&answer_list, host, jep, now);

@@ -38,6 +38,10 @@
 #include "uti/sge_dstring.h"
 #include "sgeobj/sge_qinstance_QU_L.h"
 
+#include "sge_var_VA_L.h"
+#include "sge_var.h"
+#include "sge_string.h"
+
 /* 
  * Q types values for QU_qtype 
  */
@@ -154,4 +158,10 @@ qinstance_verify_full_name(lList **answer_list, const char *full_name);
 
 void
 qinstance_set_error(lListElem *qinstance, u_long32 type, const char *message, bool set_error);
+
+void
+qinstance_set_gpu_used(lListElem *jep, lListElem *cr, lListElem *cr_config, int debit_slots);
+
+const char*
+qinstance_get_gpu_used(u_long32 job_id, const lListElem *cr);
 #endif /* __SGE_QINSTANCE_H */

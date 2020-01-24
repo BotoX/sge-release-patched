@@ -61,7 +61,8 @@ enum {
    JG_sticket,
    JG_jcoticket,
    JG_jcfticket,
-   JG_processors
+   JG_processors,
+   JG_cuda_visible_divices
 };
 
 LISTDEF(JG_Type)
@@ -80,6 +81,7 @@ LISTDEF(JG_Type)
    SGE_DOUBLE(JG_jcoticket, CULL_DEFAULT | CULL_JGDI_HIDDEN) /* job class override tickets             */
    SGE_DOUBLE(JG_jcfticket, CULL_DEFAULT | CULL_JGDI_HIDDEN) /* job class functional tickets           */
    SGE_STRING(JG_processors, CULL_DEFAULT | CULL_JGDI_HIDDEN) /* processor sets */
+   SGE_STRING(JG_cuda_visible_divices, CULL_DEFAULT | CULL_JGDI_HIDDEN) /* CUDA_VISIBLE_DEVICES */
 LISTEND
 
 NAMEDEF( JGN )
@@ -97,6 +99,7 @@ NAMEDEF( JGN )
    NAME( "JG_jcoticket" )
    NAME( "JG_jcfticket" )
    NAME( "JG_processors" )
+   NAME( "JG_cuda_visible_divices" )
 NAMEEND
 
 #define JGS sizeof(JGN)/sizeof(char*)

@@ -1079,6 +1079,10 @@ rc_debit_consumable(lListElem *jep, lListElem *ep, lList *centry_list,
                         (config_nm==QU_consumable_config_list)?"queue":"host",
                         obj_name, debit_slots));
                lAddDouble(cr, RUE_utilized_now, debit_slots * dval);
+               /*Deal with ngpus, on host*/
+               if(!strcmp(name , "ngpus") && abs(debit_slots) > 0 && config_nm==EH_consumable_config_list) {
+                 qinstance_set_gpu_used(jep, cr, cr_config, debit_slots * dval);
+               }
             } else {
                double actual_value = cr == NULL ? 0 : lGetDouble(cr, RUE_utilized_now);
                double config_value = lGetDouble(cr_config, CE_doubleval);
@@ -1366,4 +1370,166 @@ qinstance_set_error(lListElem *qinstance, u_long32 type, const char *message, bo
    } else {
       qinstance_message_trash_all_of_type_X(qinstance, type);
    }
+}
+
+/****** sge_qinstance/qinstance_set_gpu_used() ************************************
+ * *  NAME
+ * *     qinstance_set_gpv_used() -- set/unset qinstance into state
+ * *
+ * *  SYNOPSIS
+ * *
+ * *  FUNCTION
+ * *
+ * *  INPUTS
+ *     lListElem *jep       - The job (JB_Type) defining which resources and how
+ *     *                            much of them need to be (un)debited
+ * *     lListElem *cr -      - RUE_Type
+ * *     lListElem *cr_config - CE_Type
+ * *
+ * *  NOTES
+ * *     MT-NOTE: qinstance_set_error() is MT safe 
+ * *******************************************************************************/
+void
+qinstance_set_gpu_used(lListElem *jep, lListElem *cr, lListElem *cr_config, int debit_slots)
+{
+    DENTER(QINSTANCE_LAYER, "qinstance_set_gpu_used");
+    int gfoundp=0; 
+    int gfoundm=0;
+    int nslots=debit_slots;
+    double total=0; 
+    total = lGetDouble(cr_config, CE_doubleval);
+
+    if(debit_slots < 0){ /*undebiting*/
+      nslots=-1 * nslots;    
+    }
+
+    int ngpu= (int)total;//debit_slots * dval;
+    //if(ngpu>8) ngpu=8; /*hard coded, <10 gpu*/
+
+
+    long job_id=(long)lGetUlong(jep, JB_job_number);
+
+    lList *iLgpu = lGetList(cr, RUE_utilized_now_GRES);
+    if (iLgpu == NULL) {
+         DPRINTF(("Create GPU list now\n"));
+         iLgpu=lCreateList("gpu_util", VA_Type);
+         if (iLgpu == NULL){
+              DPRINTF(("Can not create GPU list\n"));
+         }
+     }
+              
+     int ig;
+
+     for(ig = 0; ig < ngpu; ig++){ /*GPU 1,2 3,...,9*/
+         const char cgdev[255],cgval[255],cgtemp[255],ccjobid[255];
+         const char * gdev=cgdev;
+         const char * gval=cgval;
+         const char * gtemp=cgtemp;
+         const char * cjobid=ccjobid;
+         sprintf (gdev, "gpu%d", ig);
+         sprintf (cjobid, "%ld", job_id);
+
+         sprintf (gval, "%ld;%1d", job_id, ig);
+         gtemp = (char*)var_list_get_string(iLgpu, (const char *)gdev);
+
+         if(gtemp == NULL || strlen(gtemp)==0){
+              DPRINTF(("Create GPU list items\n"));
+              if(debit_slots > 0 && gfoundp < debit_slots) {
+                 var_list_set_string(&iLgpu, gdev, gval); /*Got this gpu*/
+                 gfoundp++;
+                 DPRINTF(("debiting GPUS %d  for %d slots %s : %s ;;%s  gfoundp=%d\n", ig, debit_slots,gdev,gval,gtemp,gfoundp));
+              } 
+
+             if(gfoundp >= nslots) break; //bug fix
+         }else {
+            struct saved_vars_s *context1;
+            const char *token_1 = NULL;
+            context1 = NULL;
+            token_1 = sge_strtok_r(gtemp, ";", &context1);
+            const char* gjobid= (char *)token_1;
+            // while (token_1 != NULL) {
+            //  token_1 = sge_strtok_r(NULL, ";", &context1);
+            //} /*token_1= ig*/
+            //char* idgpu=(char*)token_1;
+
+            //sge_free_saved_vars(context1);
+            if(debit_slots < 0 && gfoundm < nslots) { /*how about =0??? undebiting gpu now*/
+               if( !strcmp(gjobid, cjobid)) {
+                  var_list_set_string(&iLgpu, gdev, "");/*need to check all items?*/
+                  gfoundm++;
+                  DPRINTF(("undebiting GPUS %d  for %d slots of  %s \n", ig, debit_slots,gtemp));
+               }
+                     /*var_list_delete_string(&cr, gdev);*/
+            }
+            sge_free_saved_vars(context1);
+            if(gfoundm >= nslots) break;
+        }/*if*/ 
+     }/*for ig<ngpu*/
+
+
+     if(lSetList(cr, RUE_utilized_now_GRES, iLgpu) !=0 ) {
+        DPRINTF(("Failed to set the GPU list\n"));
+     }
+
+}
+
+/****** sge_qinstance/qinstance_get_gpu_used() ************************************
+ * *  NAME
+ * *     qinstance_get_gpv_used() -- set/unset qinstance into state
+ * *
+ * *  SYNOPSIS
+ * *
+ * *  FUNCTION
+ * *
+ * *  INPUTS
+ *     lListElem *jep       - The job (JB_Type) defining which resources and how
+ *     *                            much of them need to be (un)debited
+ * *     lListElem *cr -      - RUE_Type
+ * *     lListElem *cr_config - CE_Type
+ * *
+ * *  NOTES
+ * *     MT-NOTE: qinstance_set_error() is MT safe 
+ * *******************************************************************************/
+const char *
+qinstance_get_gpu_used(u_long32 job_id, const lListElem *cr)
+{
+  DENTER(QINSTANCE_LAYER, "qinstance_get_gpu_used");
+  lListElem *rung;
+  const char* ret=NULL;
+
+  char cg_set[255];
+  char *g_set=cg_set;
+  *cg_set='\0';
+
+  fprintf(stderr, "READ GPU used JOID=%d   utilized=%f\n", job_id, lGetDouble(cr,RUE_utilized_now));
+
+  if(lGetList(cr, RUE_utilized_now_GRES)==NULL) fprintf(stderr, "No GPU List found!\n");
+  for_each (rung,lGetList(cr, RUE_utilized_now_GRES)) {
+       char cgtemp[255], ccjobid[255];
+       char *gtemp=cgtemp;
+       char *cjobid=ccjobid;
+       fprintf(stderr, "Found GPU id= %d\n",job_id);
+       sprintf (cjobid, "%ld", job_id);
+
+        gtemp = (char*) lGetString(rung, VA_value);
+
+        if(gtemp == NULL || strlen(gtemp)==0){
+        }else {
+          struct saved_vars_s *context1;
+          const char *token_1 = NULL;
+                  
+          context1 = NULL;
+          token_1 = sge_strtok_r(gtemp, ";", &context1);
+          char* gjobid= (char*)token_1;
+          token_1 = sge_strtok_r(NULL, ";", &context1);
+          char *sig=(char*)token_1;
+	  if( !strcmp(gjobid,cjobid) && gjobid!=NULL && strlen(gjobid)!=0){
+             strcat(g_set,",");
+             strcat(g_set,sig);
+	  }          
+          sge_free_saved_vars(context1);
+       }
+  }/*for_each*/
+  ret=(const char*)&cg_set[1];
+  return ret;
 }
