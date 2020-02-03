@@ -1497,9 +1497,8 @@ qinstance_get_gpu_used(u_long32 job_id, const lListElem *cr)
   lListElem *rung;
   const char* ret=NULL;
 
-  char cg_set[255];
+  char cg_set[255] = {'\0'};
   char *g_set=cg_set;
-  *cg_set='\0';
 
   fprintf(stderr, "READ GPU used JOID=%d   utilized=%f\n", job_id, lGetDouble(cr,RUE_utilized_now));
 

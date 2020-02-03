@@ -1057,14 +1057,17 @@ void sge_commit_job(sge_gdi_ctx_class_t *ctx,
 
                {
                  const char *myname="ngpus";
+                 const char* gpuid="";
                  /*Process GPU infor*/
                  lListElem *theGpus = lGetSubStr(host, RUE_name, myname, EH_resource_utilization); /*hard coded*/
                  if(theGpus == NULL){
                    DPRINTF(("Error, cannot get NGPUS list\n"));
                  }
-                 /*u_long32*/
-                 const char* gpuid=NULL;
-                 gpuid=qinstance_get_gpu_used(jobid,theGpus);
+                 else
+                 {
+                   /*u_long32*/
+                   gpuid=qinstance_get_gpu_used(jobid,theGpus);
+                 }
                  lSetString(ep,JG_cuda_visible_divices, gpuid);
                }
 
